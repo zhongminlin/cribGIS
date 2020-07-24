@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[74]:
+# In[157]:
 
 
 # packages
 import folium
+from folium import FeatureGroup
 import json
 import pandas as pd
 import os
@@ -67,7 +68,7 @@ nhs_dict = nhs.set_index('Hood#')['    Black'] #,'Chinese','Unemployed','No cert
 nhs_dict[94]
 
 
-# In[75]:
+# In[158]:
 
 
 # overlay choropleth
@@ -139,24 +140,52 @@ style_function = "font-size: 10px; font-weight: bold"
 unemp.geojson.add_child(
     folium.features.GeoJsonTooltip(['AREA_NAME'], style=style_function, labels=False))
 
-m.add_child(cvd).add_child(blk).add_child(mhi).add_child(unemp)
-m.add_child(folium.map.LayerControl())
+# Uneducated 2011
+unedu=folium.Choropleth(
+    geo_data=nb,
+    data=nhs,
+    name='Uneducated population by Neighbourhood 2011',
+    columns=['Hood#', '  No certificate, diploma or degree'],
+    key_on='feature.properties.AREA_SHORT_CODE',
+    fill_color='Purples',
+    fill_opacity=0.5,
+    legend_name='Uneducated population',
+    highlight=True
+)
+
+style_function = "font-size: 10px; font-weight: bold"
+unedu.geojson.add_child(
+    folium.features.GeoJsonTooltip(['AREA_NAME'], style=style_function, labels=False))
+
+m.add_child(cvd).add_child(blk).add_child(mhi).add_child(unemp).add_child(unedu)
+# m.add_child(folium.map.LayerControl())
 
 
-# In[76]:
+# In[159]:
 
 
-# plot homicides with popup, dot marker
+# plot homicides with popup, dot marker, put into a feature group
+# marker_cluster = MarkerCluster(name='Homicide').add_to(m)
+hmc_fg = FeatureGroup(name='Homicide',
+                     overlay=True,
+                     control=False)
+
 for (index, row) in hmc.iterrows():
     folium.CircleMarker(location=[row.loc['Lat'], row.loc['Long']],
-                        popup='Date: '+ str(row.loc['occurrence_date']) +' Type: '+ row.loc['homicide_type'] + ' Neighbourhood: '+ row.loc['Neighbourhood'], 
+                        popup='Date: '+ str(row.loc['occurrence_date']) +' Type: '+ row.loc['homicide_type'] + ' Neighbourhood: '+ row.loc['Neighbourhood'],
                         radius=2,
                         color='black',
-                        tooltip='click').add_to(m)
+                        tooltip='click').add_to(hmc_fg)
+    
+# keep it always on top
+m.keep_in_front(hmc_fg)
+hmc_fg.add_to(m)
+m.add_child(folium.map.LayerControl())
+
 m
 
 
-# In[77]:
+# In[160]:
 
 
 m.save('TOneighbourhood.html')
